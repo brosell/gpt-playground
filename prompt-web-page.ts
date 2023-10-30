@@ -3,9 +3,9 @@
 import OpenAI from 'openai';
 import prompts from './prompts';
 import blogs from './testdata/blog';
-import { NodeHtmlMarkdown } from 'node-html-markdown'
 import { partition } from './src/utils';
 import { calculateTextSegmentPositions } from './src/text-segmenter';
+import { IContentProvider, WebPageProvider } from './src/web-page-provider';
 
 
 const openai = new OpenAI({
@@ -30,42 +30,13 @@ const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<
   }
 };
 
-function getTitleFromHtml(html: string): string {
-  const regex = /<title[^>]*>([^<]+)<\/title>/i;
-  const match = html.match(regex);
-  return match ? match[1] : '';
-}
-
-function removeTagsAndContents(input: string, tags: string[]): string {
-  tags.forEach(tag => {
-      const regex = new RegExp(`<${tag}\\b[^<]*(?:(?!<\/${tag}>)<[^<]*)*<\/${tag}>`, 'gi');
-      input = input.replace(regex, '');
-  });
-  return input;
-}
-function removeExtraWhitespaceAndLinefeeds(input: string): string {
-  return input.replace(/\s+|\n|\r/g, ' ').trim();
-}
-function removeHTMLTags(input: string): string {
-  return input.replace(/<\/?[^>]+(>|$)/g, "");
-}
-
-async function fetchBlogText(blogUrl: string): Promise<{ title: string; content: string; }> {
-  const response = await fetch(blogUrl);
-  const text = await response.text();
-  let result = removeHTMLTags(removeTagsAndContents(text, ['head', 'script'])); //NodeHtmlMarkdown.translate(text);
-  result = removeExtraWhitespaceAndLinefeeds(result);
-  // console.log(result);
-  // process.exit(0);
-
-  return { title: getTitleFromHtml(text),  content: result };
-}
 
 (async () => {
   const question = 'how do I promote mentally healthy kids';
   const url = blogs.healthyKids;
 
-  const { title, content } = await fetchBlogText(url);
+  const provider: IContentProvider = new WebPageProvider(url);
+  const { title, content } = await provider.fetch();
   const isRelevant = await askGpt(prompts.TITLE_IS_RELEVANT({ question, title }));
   console.log('relevant title', isRelevant);
   if (isRelevant.startsWith("FALSE")) {
