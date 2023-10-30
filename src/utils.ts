@@ -38,3 +38,12 @@ export const partition = <T>(ary: Array<T>, callback: (n: T) => boolean): [T[], 
     return callback(e) ? [[...pass, e], fail] : [pass, [...fail, e]];
   }, [[], []] as [T[], T[]]);
 
+  function constructTemplateString(templateString: string, params: Record<string, string>): string {
+    return templateString.replace(/{{(.*?)}}/g, (match, token) => {
+      return params[token.trim()] || match;
+    });
+  }
+  
+  export const templateStringConstructor  = (template: string) => {
+    return (params: Record<string, string>) => constructTemplateString(template, params)
+  }

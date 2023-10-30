@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import prompts from './prompts';
 import blogs from './testdata/blog';
 import { NodeHtmlMarkdown } from 'node-html-markdown'
-import { partition, pipe } from './src/pipe';
+import { partition } from './src/utils';
 import { calculateTextSegmentPositions } from './src/text-segmenter';
 
 
@@ -30,12 +30,6 @@ const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<
   }
 };
 
-// function getTitleFromHtml(html: string): string {
-//   const regex = /<title>(.*?)<\/title>/i;
-//   const match = html.match(regex);
-//   return match ? match[1] : '';
-// }
-
 function getTitleFromHtml(html: string): string {
   const regex = /<title[^>]*>([^<]+)<\/title>/i;
   const match = html.match(regex);
@@ -43,42 +37,26 @@ function getTitleFromHtml(html: string): string {
 }
 
 async function fetchBlogText(blogUrl: string): Promise<{ title: string; content: string; }> {
-  // Fetch the blog
   const response = await fetch(blogUrl);
-  
-  // Get the text from the response
   const text = await response.text();
-  
-  // Translate the text
   const translatedText = NodeHtmlMarkdown.translate(text);
 
-  return { title:getTitleFromHtml(text),  content: translatedText };
+  return { title: getTitleFromHtml(text),  content: translatedText };
 }
-
-function buildPrompt(promptTemplate: string, params: Record<string, string>): string {
-  return promptTemplate.replace(/{{(.*?)}}/g, (match, token) => {
-    return params[token.trim()] || match;
-  });
-}
-
 
 (async () => {
-  const question = 'Should we prevent AI from taking over the world?';
-  const url = blogs.endOfTheWorld;
+  const question = 'Is chatGPT and AI good for society?';
+  const url = blogs.parentsGuideChatGPT;
 
-  console.log('question', question);
-
- const { title, content } = await fetchBlogText(url);
-  console.log('title', title);
-  // const titlePrompt = buildPrompt(prompts.TITLE_IS_RELEVANT, { question, title })
-  const isRelevant = await askGpt(buildPrompt(prompts.TITLE_IS_RELEVANT, { question, title }));
+  const { title, content } = await fetchBlogText(url);
+  const isRelevant = await askGpt(prompts.TITLE_IS_RELEVANT({ question, title }));
   console.log('relevant title', isRelevant);
   if (isRelevant.startsWith("FALSE")) {
     console.log('article not relevant based on title');
     return;
   }
 
-  const hitsAndMisses = await promptOnSegments(content, (chunk: string) => buildPrompt(prompts.COULD_ANSWER, { question, chunk }));
+  const hitsAndMisses = await reducingPrompt(content, (chunk: string) => prompts.COULD_ANSWER({ question, chunk }));
 
   const [hits, misses] = partition(hitsAndMisses, r => !r.startsWith('FALSE') && !!r);
 
@@ -87,16 +65,15 @@ function buildPrompt(promptTemplate: string, params: Record<string, string>): st
     .trim();
 
   if(highlights) {
-    const finalPrompt = buildPrompt( prompts.ANSWER, {question, chunk:highlights});
+    const finalPrompt = prompts.ANSWER({question, chunk:highlights});
     const finalAnswer = await askGpt(finalPrompt);
     console.log('\n\n----\n', finalAnswer);
   } else {
     console.log('no help');
-    console.log(misses);
   }
 })();
 
-async function promptOnSegments(text: any, promptFn:any) {
+async function reducingPrompt(text: any, promptFn:any) {
   const chunkLocs = calculateTextSegmentPositions(text, 256, 20);
   const promises = chunkLocs
     .map(loc => text.substring(loc.start, loc.end))
