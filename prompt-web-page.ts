@@ -11,10 +11,11 @@ import { IContentProvider, WebPageProvider } from './src/web-page-provider';
 const openai = new OpenAI({
   //apiKey: 'sk-????' //process.env["OPENAI_API_KEY"]
 });
-
+let askCount = 0;
 const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<string> => {
   // console.log('prompt', prompt);
   try {
+    askCount++;
     const chatCompletion = await openai.chat.completions.create({
       messages: [
         { role: 'system', content: 'you are a very helpful information reviewer.'},
@@ -59,10 +60,13 @@ const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<
   } else {
     console.log('no help');
   }
+  console.log('askCount', askCount);
 })();
 
+
+
 async function reducingPrompt(text: any, promptFn:any) {
-  const chunkLocs = calculateTextSegmentPositions(text, 256, 20);
+  const chunkLocs = calculateTextSegmentPositions(text, 512, 20);
   const promises = chunkLocs
     .map(loc => text.substring(loc.start, loc.end))
     .map(chunk => askGpt(promptFn(chunk)));
