@@ -13,10 +13,11 @@ const openai = new OpenAI({
 });
 
 const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<string> => {
+  // console.log('prompt', prompt);
   try {
     const chatCompletion = await openai.chat.completions.create({
       messages: [
-        { role: 'system', content: 'you are a very helpful information reviewer who can tell me if some text supports answering a question. Tone is formal and informative. '},
+        { role: 'system', content: 'you are a very helpful information reviewer.'},
         { role: 'user', content: prompt }
       ],
       model,
@@ -25,20 +26,59 @@ const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<
     return chatCompletion?.choices[0]?.message.content ?? 'FALSE -m';
 
   } catch (error) {
-    return 'FALSE -e';
+    return `FALSE -${error}`;
   }
 };
 
-(async () => {
-  const text = await pipe(blogs.aiHIghStakes,
-    fetch,
-    (r: Response) => r.text(),
-    (text: string) => NodeHtmlMarkdown.translate(text),
-  );
-    
-  const question = 'Are there ways ot prevent AI from taking over the world?';
+// function getTitleFromHtml(html: string): string {
+//   const regex = /<title>(.*?)<\/title>/i;
+//   const match = html.match(regex);
+//   return match ? match[1] : '';
+// }
 
-  const hitsAndMisses = await promptOnSegments(text, (chunk: string) => prompts.COULD_ANSWER.replace('{{question}}', question).replace('{{chunk}}', chunk));
+function getTitleFromHtml(html: string): string {
+  const regex = /<title[^>]*>([^<]+)<\/title>/i;
+  const match = html.match(regex);
+  return match ? match[1] : '';
+}
+
+async function fetchBlogText(blogUrl: string): Promise<{ title: string; content: string; }> {
+  // Fetch the blog
+  const response = await fetch(blogUrl);
+  
+  // Get the text from the response
+  const text = await response.text();
+  
+  // Translate the text
+  const translatedText = NodeHtmlMarkdown.translate(text);
+
+  return { title:getTitleFromHtml(text),  content: translatedText };
+}
+
+function buildPrompt(promptTemplate: string, params: Record<string, string>): string {
+  return promptTemplate.replace(/{{(.*?)}}/g, (match, token) => {
+    return params[token.trim()] || match;
+  });
+}
+
+
+(async () => {
+  const question = 'Should we prevent AI from taking over the world?';
+  const url = blogs.endOfTheWorld;
+
+  console.log('question', question);
+
+ const { title, content } = await fetchBlogText(url);
+  console.log('title', title);
+  // const titlePrompt = buildPrompt(prompts.TITLE_IS_RELEVANT, { question, title })
+  const isRelevant = await askGpt(buildPrompt(prompts.TITLE_IS_RELEVANT, { question, title }));
+  console.log('relevant title', isRelevant);
+  if (isRelevant.startsWith("FALSE")) {
+    console.log('article not relevant based on title');
+    return;
+  }
+
+  const hitsAndMisses = await promptOnSegments(content, (chunk: string) => buildPrompt(prompts.COULD_ANSWER, { question, chunk }));
 
   const [hits, misses] = partition(hitsAndMisses, r => !r.startsWith('FALSE') && !!r);
 
@@ -47,7 +87,7 @@ const askGpt = async (prompt: string, model: string = 'gpt-3.5-turbo'): Promise<
     .trim();
 
   if(highlights) {
-    const finalPrompt = prompts.ANSWER.replace('{{question}}', question).replace('{{chunk}}', highlights);
+    const finalPrompt = buildPrompt( prompts.ANSWER, {question, chunk:highlights});
     const finalAnswer = await askGpt(finalPrompt);
     console.log('\n\n----\n', finalAnswer);
   } else {
