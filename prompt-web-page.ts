@@ -36,17 +36,34 @@ function getTitleFromHtml(html: string): string {
   return match ? match[1] : '';
 }
 
+function removeTagsAndContents(input: string, tags: string[]): string {
+  tags.forEach(tag => {
+      const regex = new RegExp(`<${tag}\\b[^<]*(?:(?!<\/${tag}>)<[^<]*)*<\/${tag}>`, 'gi');
+      input = input.replace(regex, '');
+  });
+  return input;
+}
+function removeExtraWhitespaceAndLinefeeds(input: string): string {
+  return input.replace(/\s+|\n|\r/g, ' ').trim();
+}
+function removeHTMLTags(input: string): string {
+  return input.replace(/<\/?[^>]+(>|$)/g, "");
+}
+
 async function fetchBlogText(blogUrl: string): Promise<{ title: string; content: string; }> {
   const response = await fetch(blogUrl);
   const text = await response.text();
-  const translatedText = NodeHtmlMarkdown.translate(text);
+  let result = removeHTMLTags(removeTagsAndContents(text, ['head', 'script'])); //NodeHtmlMarkdown.translate(text);
+  result = removeExtraWhitespaceAndLinefeeds(result);
+  // console.log(result);
+  // process.exit(0);
 
-  return { title: getTitleFromHtml(text),  content: translatedText };
+  return { title: getTitleFromHtml(text),  content: result };
 }
 
 (async () => {
-  const question = 'Is chatGPT and AI good for society?';
-  const url = blogs.parentsGuideChatGPT;
+  const question = 'how do I promote mentally healthy kids';
+  const url = blogs.healthyKids;
 
   const { title, content } = await fetchBlogText(url);
   const isRelevant = await askGpt(prompts.TITLE_IS_RELEVANT({ question, title }));
