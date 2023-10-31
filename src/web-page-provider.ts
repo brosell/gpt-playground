@@ -1,8 +1,19 @@
+import fs from 'fs';
 
 export interface IContentProvider {
   fetch(): Promise<{ title: string; content: string; }>;
 }
 
+
+export class LocalFileProvider implements IContentProvider{
+  constructor(private filename: string) {}
+  
+  async fetch(): Promise<{ title: string; content: string; }> {
+    const content = fs.readFileSync(this.filename, 'utf-8');
+    console.log('file length', content.length)
+    return {title: this.filename, content};
+  }
+}
 
 export class WebPageProvider implements IContentProvider {
   constructor(private url: string) { }
@@ -37,5 +48,16 @@ export class WebPageProvider implements IContentProvider {
     result = this.removeExtraWhitespaceAndLinefeeds(result);
   
     return { title: this.getTitleFromHtml(text),  content: result };
+  }
+}
+
+export class GutenbergProvider extends WebPageProvider {
+
+  cleanGutenbergMeta(text: string): string {
+    let result = text.substring(
+      text.indexOf('*** START OF THE PROJECT GUTENBERG EBOOK'), 
+      text.indexOf("*** END OF THE PROJECT GUTENBERG EBOOK")
+    );
+    return result;
   }
 }
