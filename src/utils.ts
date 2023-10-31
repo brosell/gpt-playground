@@ -35,10 +35,22 @@ export const pipe = async (value: any, ...fns: Function[]): Promise<any> => {
   return value;
 }
 
-export const partition = <T>(ary: Array<T>, callback: (n: T) => boolean): [T[], T[]] =>
-  ary.reduce(([pass, fail], e) => {
+export const partition = <T>(array: Array<T>, callback: (n: T) => boolean): [T[], T[]] =>
+  array.reduce(([pass, fail], e) => {
     return callback(e) ? [[...pass, e], fail] : [pass, [...fail, e]];
   }, [[], []] as [T[], T[]]);
+
+export const chunk = <T>(array: Array<T>, chunkSize: number) => {
+  const result: T[][] = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    result.push( array.slice(i, i + chunkSize) );
+  }
+  return result;
+}
+
+export async function sleep(millis: number) {
+  return await new Promise(resolve => setTimeout(resolve, millis));
+}
 
   function constructTemplateString(templateString: string, params: Record<string, string>): string {
     return templateString.replace(/{{(.*?)}}/g, (match, token) => {
@@ -55,14 +67,16 @@ export const partition = <T>(ary: Array<T>, callback: (n: T) => boolean): [T[], 
   }
 
 export class IteratingFileWriter {
-  datePrefix = Math.ceil(Math.random() * 300); // new Date().toISOString().replace(':', '.');
+  rndPrefix = Math.ceil(Math.random() * 300); // new Date().toISOString().replace(':', '.');
   itr: number = 0;
 
-  constructor(private basename: string) { }
+  constructor(private basename: string) {
+    console.log('file', this.rndPrefix)
+   }
 
   write(contents: string) {
     this.itr++;
-    const filePath = `${process.cwd()}/out/${this.datePrefix}_${this.basename}_${this.itr}.txt`;
+    const filePath = `${process.cwd()}/out/${this.rndPrefix}_${this.basename}_${this.itr}.txt`;
 
     fs.writeFileSync(filePath, contents, 'utf8');
   }
