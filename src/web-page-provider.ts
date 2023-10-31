@@ -26,9 +26,13 @@ export class WebPageProvider implements IContentProvider {
     return input.replace(/<\/?[^>]+(>|$)/g, "");
   }
   
-  async fetch(): Promise<{ title: string; content: string; }> {
+  async fetch(clean: boolean = false): Promise<{ title: string; content: string; }> {
     const response = await fetch(this.url);
-    const text = await response.text();
+    let text = await response.text();
+    if (!clean) {
+      return { title: this.url, content: text };
+    }
+    
     let result = this.removeHTMLTags(this.removeTagsAndContents(text, ['head', 'script'])); //NodeHtmlMarkdown.translate(text);
     result = this.removeExtraWhitespaceAndLinefeeds(result);
   

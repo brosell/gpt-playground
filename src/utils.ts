@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 // from: https://dev.to/nexxeln/implementing-the-pipe-operator-in-typescript-30ip
 // https://www.30secondsofcode.org/js/s/pipe-async-functions/
 
@@ -47,3 +49,23 @@ export const partition = <T>(ary: Array<T>, callback: (n: T) => boolean): [T[], 
   export const templateStringConstructor  = (template: string) => {
     return (params: Record<string, string>) => constructTemplateString(template, params)
   }
+
+  export const tStringConstructor = <T extends Record<string, any>>(template: string) => {
+    return (params: T) => constructTemplateString(template, params);
+  }
+
+export class IteratingFileWriter {
+  datePrefix = Math.ceil(Math.random() * 300); // new Date().toISOString().replace(':', '.');
+  itr: number = 0;
+
+  constructor(private basename: string) { }
+
+  write(contents: string) {
+    this.itr++;
+    const filePath = `${process.cwd()}/out/${this.datePrefix}_${this.basename}_${this.itr}.txt`;
+
+    fs.writeFileSync(filePath, contents, 'utf8');
+  }
+  
+}
+
