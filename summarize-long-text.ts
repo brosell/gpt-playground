@@ -33,6 +33,11 @@ analyze the text and figure out what the major themes are.
 **The response will be one sentence**
 ===
 {{chunk}}
+  `),
+  haiku: tStringConstructor<{chunk: string}>(`
+Restate the following text in **haiku** form.
+===
+{{chunk}}
   `)
 };
 
@@ -44,12 +49,14 @@ const urls = {
 }
 
 async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => true) {
-  const locationMap = calculateTextSegmentPositions(text, CHUNK_SIZE, CHUNKS_PER);
-  const chunkedChunkLocs = chunk(locationMap, 8);
+
+  console.log('starting the tokenize')
+  const chunkedSubstrings = chunk(ai.tokenizeText(text, 3000), 8);
+  console.log('end the tokenize')
+
   const answer: string[] = [];
-  for (const chunkLocs of chunkedChunkLocs) {
-    const promises = chunkLocs
-      .map(loc => text.substring(loc.start, loc.end))
+  for (const chunkStrings of chunkedSubstrings) {
+    const promises = chunkStrings
       .map(chunk => ai.prompt(promptFn(chunk)));
 
     const hitsAndMisses = await Promise.all(promises);
@@ -69,8 +76,8 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   const fileWriter = new IteratingFileWriter('spark');
   const url = urls.subjectionOfWomen;
   
-  // const provider: IContentProvider = new WebPageProvider(url);
-  const provider: IContentProvider = new LocalFileProvider('./testdata/sparks.txt');
+  const provider: IContentProvider = new WebPageProvider(url);
+  // const provider: IContentProvider = new LocalFileProvider('./testdata/sparks.txt');
   const { title, content } = await provider.fetch();
   fileWriter.write(content);
   
@@ -90,4 +97,7 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
 
   fileWriter.write(`${finalSummarization}\n\n${theme}`);
   console.log('\n\ncalls so far', ai.count);
+
+  const haiku = await ai.prompt(p.haiku({chunk: finalSummarization}));
+  console.log('haiku\n\n', haiku);
 })();

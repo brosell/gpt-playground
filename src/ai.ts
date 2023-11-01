@@ -1,11 +1,12 @@
 import OpenAI from "openai";
+import openaiTokenCounter, { ModelType } from 'openai-gpt-token-counter';
 
 const openai = new OpenAI({
   //apiKey: 'sk-????' //process.env["OPENAI_API_KEY"]
 });
 
 export class AiInterface {
-  constructor(private safetyNet: number = 30, private model: string = 'gpt-3.5-turbo') { }
+  constructor(private safetyNet: number = 30, private model: ModelType = 'gpt-3.5-turbo') { }
 
   private _count: number = 0;
   get count() { return this._count; }
@@ -33,4 +34,33 @@ export class AiInterface {
       return `FALSE -${error}`;
     }
   }
+
+tokenizeText(text: string, tokensPer: number, tokenCounter: (t: string) => number = (s) => openaiTokenCounter.text(s, this.model)): string[] {
+    const result: string[] = []; 
+    let startIdx = 0; 
+
+    while (startIdx < text.length) {
+        let endIdx = startIdx;
+        let tokensCount = 0;
+
+        while (endIdx <= text.length) {
+            if (endIdx === text.length || text[endIdx] === ' ' || text[endIdx] === '\n') {
+                let substring = text.slice(startIdx, endIdx);
+                tokensCount = tokenCounter(substring);
+
+                if (tokensCount >= tokensPer) {
+                    result.push(substring);
+                    process.stdout.write(`${Math.floor(startIdx/text.length*100)}%|`);
+                    break;
+                }
+            } 
+            endIdx++;
+        }
+
+        startIdx = endIdx + 1; // Skip the space or linefeed for the next substring
+    }
+
+    return result;
+}
+
 }

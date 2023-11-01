@@ -62,8 +62,14 @@ export async function sleep(millis: number) {
     return (params: Record<string, string>) => constructTemplateString(template, params)
   }
 
+  function replaceSpacesAndNewlines(text: string): string {
+    let replacedText = text.replace(/(?<=[^\.!\?])\n/g, ' ');
+    replacedText = replacedText.replace(/ +/g, ' ').replace(/\n+/g, '\n');
+    return replacedText;
+  }
+
   export const tStringConstructor = <T extends Record<string, any>>(template: string) => {
-    return (params: T) => constructTemplateString(template, params);
+    return (params: T) => constructTemplateString(template, params); //.replace(/ +/g, ' ').replace(/\n+/g, '\n').trim();
   }
 
 export class IteratingFileWriter {

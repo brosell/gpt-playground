@@ -1,4 +1,4 @@
-import { templateStringConstructor } from "./src/utils";
+import { tStringConstructor, templateStringConstructor } from "./src/utils";
 
 export default {
   TITLE_IS_RELEVANT: templateStringConstructor (`
@@ -8,7 +8,7 @@ export default {
     Please answer with TRUE or FALSE without elaboration. 
     If you are unsure, please respond with UNCERTAIN.
   `),
-  COULD_ANSWER: templateStringConstructor (`
+  COULD_ANSWER: tStringConstructor<{question: string, chunk: string}> (`
     Can you reply to “{{question}}” considering the following 
     selection of text? If not, reply 'FALSE' followed by an 
     explanation of why you couldn't answer. 
