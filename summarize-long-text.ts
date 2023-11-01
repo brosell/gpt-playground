@@ -2,6 +2,7 @@ import { AiInterface } from "./src/ai";
 import { calculateTextSegmentPositions } from "./src/text-segmenter";
 import { IContentProvider, LocalFileProvider, WebPageProvider } from "./src/web-page-provider";
 import { IteratingFileWriter, chunk, sleep, tStringConstructor, templateStringConstructor } from "./src/utils";
+import openaiTokenCounter from 'openai-gpt-token-counter';
 
 const CHUNK_SIZE = 512;
 const CHUNKS_PER = 20;
@@ -52,8 +53,8 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
 
   console.log('starting the tokenize')
   const chunkedSubstrings = chunk(ai.tokenizeText(text, 3000), 8);
-  console.log('end the tokenize')
-
+  console.log('end the tokenize');
+  debugger;
   const answer: string[] = [];
   for (const chunkStrings of chunkedSubstrings) {
     const promises = chunkStrings
@@ -76,8 +77,8 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   const fileWriter = new IteratingFileWriter('spark');
   const url = urls.subjectionOfWomen;
   
-  const provider: IContentProvider = new WebPageProvider(url);
-  // const provider: IContentProvider = new LocalFileProvider('./testdata/sparks.txt');
+  // const provider: IContentProvider = new WebPageProvider(url);
+  const provider: IContentProvider = new LocalFileProvider('./testdata/sparks_lite.txt');
   const { title, content } = await provider.fetch();
   fileWriter.write(content);
   
@@ -90,8 +91,11 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   console.log('calls so far', ai.count);
 
   console.log('generating final summary and theme');
-  const finalSummarization = await ai.prompt(p.finalSummarization({chunk: summary}));
-  
+  let finalSummarization = summary;
+  if (openaiTokenCounter.text(summary, 'gpt-3.5-turbo') > 3500){
+    finalSummarization = await ai.prompt(p.finalSummarization({chunk: summary}));
+  }
+
   const theme = await ai.prompt(p.whatIsTheTheme({chunk: finalSummarization}));
   console.log('\n\ntheme\n', theme);
 
@@ -101,3 +105,5 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   const haiku = await ai.prompt(p.haiku({chunk: finalSummarization}));
   console.log('haiku\n\n', haiku);
 })();
+
+

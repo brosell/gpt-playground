@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import openaiTokenCounter, { ModelType } from 'openai-gpt-token-counter';
+import openaiTokenCounter, { ModelType } from 'openai-gpt-token-counter'; //https://snyk.io/advisor/npm-package/openai-gpt-token-counter
 
 const openai = new OpenAI({
   //apiKey: 'sk-????' //process.env["OPENAI_API_KEY"]
@@ -35,32 +35,42 @@ export class AiInterface {
     }
   }
 
-tokenizeText(text: string, tokensPer: number, tokenCounter: (t: string) => number = (s) => openaiTokenCounter.text(s, this.model)): string[] {
-    const result: string[] = []; 
-    let startIdx = 0; 
+  tokenizeText(text: string, tokensPer: number, tokenCounter: (t: string) => number = (s) => openaiTokenCounter.text(s, this.model)): string[] {
+    const result: string[] = [];
+    let startIdx = 0;
 
     while (startIdx < text.length) {
-        let endIdx = startIdx;
-        let tokensCount = 0;
+        let left = startIdx;
+        let right = text.length;
+        let lastValidMid = startIdx;
 
-        while (endIdx <= text.length) {
-            if (endIdx === text.length || text[endIdx] === ' ' || text[endIdx] === '\n') {
-                let substring = text.slice(startIdx, endIdx);
-                tokensCount = tokenCounter(substring);
+        while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            const substring = text.slice(startIdx, mid);
+            const tokensCount = tokenCounter(substring);
 
-                if (tokensCount >= tokensPer) {
-                    result.push(substring);
-                    process.stdout.write(`${Math.floor(startIdx/text.length*100)}%|`);
-                    break;
-                }
-            } 
-            endIdx++;
+            if (tokensCount > tokensPer) {
+                right = mid;
+            } else {
+                lastValidMid = mid;
+                left = mid + 1;
+            }
+
+            if (left >= right) {
+                break;
+            }
         }
 
-        startIdx = endIdx + 1; // Skip the space or linefeed for the next substring
+        const finalSubstring = text.slice(startIdx, lastValidMid);
+        if (finalSubstring) {
+            result.push(finalSubstring);
+            process.stdout.write(`${Math.floor(startIdx/text.length*100)}%|`);
+        }
+
+        startIdx = lastValidMid != startIdx ? lastValidMid : text.length;
     }
 
-    return result;
-}
+    return result.map(s => s.trim()).filter(s => s.length);
+  }
 
 }
