@@ -1,6 +1,8 @@
 
 type Id = string;
 
+type Role = 'USER' | 'SYSTEM' | 'ASSISTANT';
+
 type Thread = IChatPoint[];
 
 interface IHaveId {
@@ -17,16 +19,17 @@ export interface IStreamOfConsciousness extends IHaveId{
 };
 
 export interface IChatPoint extends IHaveId{
-  streamId: Id; 
+  streamId: Id;
   parentChatPointId?: Id;
   forkedFromId?: Id;
+  persona?: Id;
 
   userMessage: string;
   assistantMessage?: string; // if undefined then this chatpoint hasn't had the user's prompt sent yet
 };
 
 export interface ICompletion {
-  role: 'SYSTEM' | 'USER' | 'ASSISTANT';
+  role: Role;
   content: string;
 }
 
@@ -52,6 +55,8 @@ export interface IConversationNavigator  {
 }
 
 export class ConversationNavigator  implements IConversationNavigator  {
+  private personas: IPersona[];
+
   constructor(private streamOfConsciousness: IStreamOfConsciousness) { }
 
   getBranchToHere(end: IChatPoint): Thread {
@@ -111,9 +116,34 @@ export class ConversationNavigator  implements IConversationNavigator  {
   }
 
   threadToCompletions(thread: Thread): ICompletion[] {
-    return thread.map(cp => ({
-      role: cp.assistantMessage ? 'ASSISTANT' : 'USER',
-      content: cp.assistantMessage || cp.userMessage,
-    }));
+    const completions: ICompletion[] = [];
+  
+    // Find the latest IChatPoint with a personaId
+    const latestPersonaChatPoint = thread.slice().reverse().find(cp => cp.persona);
+    
+    // If found, prepend the SYSTEM role message using the instructionPrefix from the IPersona
+    if (latestPersonaChatPoint && latestPersonaChatPoint.persona) {
+      const persona = this.personas.find(p => p.id === latestPersonaChatPoint.persona) as IPersona;
+      completions.push({
+        role: 'SYSTEM',
+        content: persona.instructionsPrefix,
+      });
+    }
+  
+    // Convert the rest of the thread into ICompletion objects, ensuring USER message comes before ASSISTANT message
+    for (const cp of thread) {
+      completions.push({
+        role: 'USER',
+        content: cp.userMessage,
+      });
+      if (cp.assistantMessage) {
+        completions.push({
+          role: 'ASSISTANT',
+          content: cp.assistantMessage,
+        });
+      }
+    }
+  
+    return completions;
   }
 }

@@ -1,4 +1,4 @@
-import { ConversationNavigator , IStreamOfConsciousness, IChatPoint } from './conversation-models';
+import { ConversationNavigator , IStreamOfConsciousness, IChatPoint, IPersona } from './conversation-models';
 
 describe('ConversationNavigator', () => {
   describe('ConversationNavigator1', () => {
@@ -116,20 +116,160 @@ describe('ConversationNavigator', () => {
       });
     });
 
+    // describe('threadToCompletions', () => {
+    //   it('should convert a thread to an array of completions', () => {
+    //     const thread: IChatPoint[] = [
+    //       { id: 'cp1', streamId: 'stream1', userMessage: 'User message', assistantMessage: 'Assistant message' },
+    //       { id: 'cp2', streamId: 'stream1', userMessage: 'User message 2' },
+    //     ];
+
+    //     const completions = convNav.threadToCompletions(thread);
+
+    //     expect(completions).toEqual([
+    //       { role: 'ASSISTANT', content: 'Assistant message' },
+    //       { role: 'USER', content: 'User message 2' },
+    //     ]);
+    //   });
+    // });
+  });
+});
+
+
+describe('ConversationNavigator persona and system message', () => {
+    let navigator: ConversationNavigator;
+    let streamOfConsciousness: IStreamOfConsciousness;
+    let personas: IPersona[];
+  
+    beforeEach(() => {
+      personas = [{
+        id: 'persona-1',
+        instructionsPrefix: 'System says: ',
+      }];
+  
+      streamOfConsciousness = {
+        id: 'stream-1',
+        topic: 'Test Topic',
+        chatPoints: []
+      };
+  
+      navigator = new ConversationNavigator(streamOfConsciousness);
+      // Mocking the personas array inside navigator instance
+      navigator['personas'] = personas;
+    });
+  
     describe('threadToCompletions', () => {
-      it('should convert a thread to an array of completions', () => {
+      it('should convert a thread of chat points with both userMessage and assistantMessage into a sequence of completions', () => {
         const thread: IChatPoint[] = [
-          { id: 'cp1', streamId: 'stream1', userMessage: 'User message', assistantMessage: 'Assistant message' },
-          { id: 'cp2', streamId: 'stream1', userMessage: 'User message 2' },
+          { id: 'cp-1', streamId: 'stream-1', userMessage: 'Hello', assistantMessage: 'Hi there!' },
+          { id: 'cp-2', streamId: 'stream-1', userMessage: 'How are you?', parentChatPointId: 'cp-1', assistantMessage: 'I am fine, thank you!' },
         ];
-
-        const completions = convNav.threadToCompletions(thread);
-
+  
+        const completions = navigator.threadToCompletions(thread);
+  
         expect(completions).toEqual([
-          { role: 'ASSISTANT', content: 'Assistant message' },
-          { role: 'USER', content: 'User message 2' },
+          { role: 'USER', content: 'Hello' },
+          { role: 'ASSISTANT', content: 'Hi there!' },
+          { role: 'USER', content: 'How are you?' },
+          { role: 'ASSISTANT', content: 'I am fine, thank you!' },
+        ]);
+      });
+  
+      it('should include a SYSTEM role message if a chat point has a persona', () => {
+        const thread: IChatPoint[] = [
+          { id: 'cp-1', streamId: 'stream-1', userMessage: 'Hello', assistantMessage: 'Hi there!', persona: 'persona-1' },
+          { id: 'cp-2', streamId: 'stream-1', userMessage: 'How are you?', parentChatPointId: 'cp-1', assistantMessage: 'I am fine, thank you!' },
+        ];
+  
+        const completions = navigator.threadToCompletions(thread);
+  
+        expect(completions).toEqual([
+          { role: 'SYSTEM', content: 'System says: ' },
+          { role: 'USER', content: 'Hello' },
+          { role: 'ASSISTANT', content: 'Hi there!' },
+          { role: 'USER', content: 'How are you?' },
+          { role: 'ASSISTANT', content: 'I am fine, thank you!' },
+        ]);
+      });
+
+      it('should include a SYSTEM role message if a chat point has a persona', () => {
+        const thread: IChatPoint[] = [
+          { id: 'cp-1', streamId: 'stream-1', userMessage: 'Hello', assistantMessage: 'Hi there!' },
+          { id: 'cp-2', streamId: 'stream-1', userMessage: 'How are you?', parentChatPointId: 'cp-1', assistantMessage: 'I am fine, thank you!' },
+        ];
+  
+        const completions = navigator.threadToCompletions(thread);
+  
+        expect(completions).toEqual([
+          { role: 'USER', content: 'Hello' },
+          { role: 'ASSISTANT', content: 'Hi there!' },
+          { role: 'USER', content: 'How are you?' },
+          { role: 'ASSISTANT', content: 'I am fine, thank you!' },
         ]);
       });
     });
+
+
+    
+    it('should include a SYSTEM role message as the first completion if any chat point has a persona', () => {
+      const thread: IChatPoint[] = [
+        { id: 'cp-1', streamId: 'stream-1', userMessage: 'Initial message', assistantMessage: 'Initial response' },
+        { id: 'cp-2', streamId: 'stream-1', userMessage: 'Follow-up question?', parentChatPointId: 'cp-1', assistantMessage: 'Follow-up response', persona: 'persona-1' },
+        { id: 'cp-3', streamId: 'stream-1', userMessage: 'Another user message', parentChatPointId: 'cp-2' },
+      ];
+  
+      const completions = navigator.threadToCompletions(thread);
+  
+      expect(completions).toEqual([
+        { role: 'SYSTEM', content: 'System says: ' },
+        { role: 'USER', content: 'Initial message' },
+        { role: 'ASSISTANT', content: 'Initial response' },
+        { role: 'USER', content: 'Follow-up question?' },
+        { role: 'ASSISTANT', content: 'Follow-up response' },
+        { role: 'USER', content: 'Another user message' },
+      ]);
+    });
+
+    it('should only use the most recent persona for the SYSTEM role message', () => {
+      const thread: IChatPoint[] = [
+        { id: 'cp-1', streamId: 'stream-1', userMessage: 'Initial message', assistantMessage: 'Initial response', persona: 'persona-1' },
+        { id: 'cp-2', streamId: 'stream-1', userMessage: 'Follow-up question?', parentChatPointId: 'cp-1', assistantMessage: 'Follow-up response' },
+        { id: 'cp-3', streamId: 'stream-1', userMessage: 'Another user message', parentChatPointId: 'cp-2', persona: 'persona-1' },
+      ];
+  
+      const completions = navigator.threadToCompletions(thread);
+  
+      expect(completions).toEqual([
+        { role: 'SYSTEM', content: 'System says: ' },
+        { role: 'USER', content: 'Initial message' },
+        { role: 'ASSISTANT', content: 'Initial response' },
+        { role: 'USER', content: 'Follow-up question?' },
+        { role: 'ASSISTANT', content: 'Follow-up response' },
+        { role: 'USER', content: 'Another user message' },
+      ]);
+    });
+
+    it('should only use the most recent persona for the SYSTEM role message when multiple ChatPoints have a persona', () => {
+      // Adding a second persona with a different instructionsPrefix
+      personas.push({
+        id: 'persona-2',
+        instructionsPrefix: 'Second System says: ',
+      });
+  
+      const thread: IChatPoint[] = [
+        { id: 'cp-1', streamId: 'stream-1', userMessage: 'Initial message', assistantMessage: 'Initial response', persona: 'persona-1' },
+        { id: 'cp-2', streamId: 'stream-1', userMessage: 'Follow-up question?', parentChatPointId: 'cp-1', assistantMessage: 'Follow-up response', persona: 'persona-2' },
+        { id: 'cp-3', streamId: 'stream-1', userMessage: 'Another user message', parentChatPointId: 'cp-2' },
+      ];
+  
+      const completions = navigator.threadToCompletions(thread);
+  
+      expect(completions).toEqual([
+        { role: 'SYSTEM', content: 'Second System says: ' }, // Expecting the most recent persona's message
+        { role: 'USER', content: 'Initial message' },
+        { role: 'ASSISTANT', content: 'Initial response' },
+        { role: 'USER', content: 'Follow-up question?' },
+        { role: 'ASSISTANT', content: 'Follow-up response' },
+        { role: 'USER', content: 'Another user message' },
+      ]);
+    });
   });
-});
