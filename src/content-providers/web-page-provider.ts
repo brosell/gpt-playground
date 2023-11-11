@@ -6,10 +6,10 @@ export interface IContentProvider {
 
 
 export class LocalFileProvider implements IContentProvider{
-  constructor(private filename: string) {}
+  constructor(private filename: string, private fileSys: any = fs) {}
   
   async fetch(): Promise<{ title: string; content: string; }> {
-    const content = fs.readFileSync(this.filename, 'utf-8');
+    const content = this.fileSys.readFileSync(this.filename, 'utf-8');
     console.log('file length', content.length)
     return {title: this.filename, content};
   }
