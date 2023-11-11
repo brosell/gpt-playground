@@ -15,7 +15,7 @@ The following text is part of a much larger document. The task is to
 summarize this section so that multiple summaries can be combined
 later to further summarize. The following is fiction. The summary 
 should preserve the tone and narrative of the original.
-**Produce only the summary text.**
+**Produce only a 100 word summary.**
 ===
 {{chunk}}
   `),
@@ -24,7 +24,7 @@ You have been summarizing a long document in sections. Below is the
 concatenation of the summaries. The task is to distill these summaries
 into one final summary. The summary will be **3 paragraphs** and
 should preserve the tone and narrative of the original.
-**Produce only the summary text.**
+**Produce only a 300 word summary.**
 ===
 {{chunk}} 
   `),
@@ -52,8 +52,10 @@ const urls = {
 async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => true) {
 
   console.log('starting the tokenize')
-  const chunkedSubstrings = chunk(ai.tokenizeText(text, 3000), 8);
-  console.log('end the tokenize');
+  const substrings = ai.tokenizeText(text, 3000);
+  console.log('end the tokenize', substrings.length);
+
+  const chunkedSubstrings = chunk(substrings, 6);
   debugger;
   const answer: string[] = [];
   for (const chunkStrings of chunkedSubstrings) {
@@ -71,14 +73,12 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   return answer.join('\n\n');
 }
 
-
-
 (async () => {
-  const fileWriter = new IteratingFileWriter('spark');
-  const url = urls.subjectionOfWomen;
+  const fileWriter = new IteratingFileWriter('thinker');
+  const url = urls.deadlyThinkers;
   
-  // const provider: IContentProvider = new WebPageProvider(url);
-  const provider: IContentProvider = new LocalFileProvider('./testdata/sparks_lite.txt');
+  const provider: IContentProvider = new WebPageProvider(url);
+  // const provider: IContentProvider = new LocalFileProvider('./testdata/gunslinger_2.md');
   const { title, content } = await provider.fetch();
   fileWriter.write(content);
   
@@ -103,6 +103,7 @@ async function reducingPrompt(text: any, promptFn:any, accepterFn:any = () => tr
   console.log('\n\ncalls so far', ai.count);
 
   const haiku = await ai.prompt(p.haiku({chunk: finalSummarization}));
+  fileWriter.write(haiku);
   console.log('haiku\n\n', haiku);
 })();
 

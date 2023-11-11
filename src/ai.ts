@@ -25,7 +25,7 @@ export class AiInterface {
         ], 
         model: this.model
       }, 
-      // { timeout: 5000 },
+      { timeout: 5000 },
     );
     
       return chatCompletion?.choices[0]?.message.content ?? 'FALSE -m';
@@ -69,8 +69,7 @@ export class AiInterface {
 
         startIdx = lastValidMid != startIdx ? lastValidMid : text.length;
     }
-
-    return result.map(s => s.trim()).filter(s => s.length);
+    return result.filter(s => s.trim().length);
   }
 
 }
