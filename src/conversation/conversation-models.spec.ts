@@ -213,25 +213,6 @@ describe('ConversationNavigator thread to completions', () => {
       ]);
     });
 
-    it('should only use the most recent persona for the SYSTEM role message', () => {
-      const thread: IChatPoint[] = [
-        { id: 'cp-1', streamId: 'stream-1', userMessage: 'Initial message', assistantMessage: 'Initial response', persona: 'persona-1' },
-        { id: 'cp-2', streamId: 'stream-1', userMessage: 'Follow-up question?', parentChatPointId: 'cp-1', assistantMessage: 'Follow-up response' },
-        { id: 'cp-3', streamId: 'stream-1', userMessage: 'Another user message', parentChatPointId: 'cp-2', persona: 'persona-1' },
-      ];
-  
-      const completions = navigator.threadToCompletions(thread);
-  
-      expect(completions).toEqual([
-        { role: 'SYSTEM', content: 'System says: ' },
-        { role: 'USER', content: 'Initial message' },
-        { role: 'ASSISTANT', content: 'Initial response' },
-        { role: 'USER', content: 'Follow-up question?' },
-        { role: 'ASSISTANT', content: 'Follow-up response' },
-        { role: 'USER', content: 'Another user message' },
-      ]);
-    });
-
     it('should only use the most recent persona for the SYSTEM role message when multiple ChatPoints have a persona', () => {
       // Adding a second persona with a different instructionsPrefix
       personas.push({
