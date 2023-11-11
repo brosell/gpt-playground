@@ -115,27 +115,11 @@ describe('ConversationNavigator', () => {
         expect(forks).toEqual([[chatPoint2]]);
       });
     });
-
-    // describe('threadToCompletions', () => {
-    //   it('should convert a thread to an array of completions', () => {
-    //     const thread: IChatPoint[] = [
-    //       { id: 'cp1', streamId: 'stream1', userMessage: 'User message', assistantMessage: 'Assistant message' },
-    //       { id: 'cp2', streamId: 'stream1', userMessage: 'User message 2' },
-    //     ];
-
-    //     const completions = convNav.threadToCompletions(thread);
-
-    //     expect(completions).toEqual([
-    //       { role: 'ASSISTANT', content: 'Assistant message' },
-    //       { role: 'USER', content: 'User message 2' },
-    //     ]);
-    //   });
-    // });
   });
 });
 
 
-describe('ConversationNavigator persona and system message', () => {
+describe('ConversationNavigator thread to completions', () => {
     let navigator: ConversationNavigator;
     let streamOfConsciousness: IStreamOfConsciousness;
     let personas: IPersona[];
