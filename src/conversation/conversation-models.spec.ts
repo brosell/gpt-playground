@@ -2,7 +2,7 @@ import { ConversationNavigator , IStreamOfConsciousness, IChatPoint } from './co
 
 describe('ConversationNavigator', () => {
   describe('ConversationNavigator1', () => {
-    let socInstance: ConversationNavigator ;
+    let cnInstance: ConversationNavigator ;
     let mockStreamOfConsciousness: IStreamOfConsciousness;
 
     beforeEach(() => {
@@ -17,11 +17,11 @@ describe('ConversationNavigator', () => {
           { id: 'cp5', streamId: 'stream1', userMessage: 'Another leaf message', parentChatPointId: 'cp4' }
         ]
       };
-      socInstance = new ConversationNavigator (mockStreamOfConsciousness);
+      cnInstance = new ConversationNavigator (mockStreamOfConsciousness);
     });
 
     test('getAllThreads should return all threads from root nodes to leaves', () => {
-      const threads = socInstance.getAllThreads();
+      const threads = cnInstance.getAllThreads();
       expect(threads).toHaveLength(2); // We expect two threads based on the mock data
       console.log(threads);
       // Check the first thread
